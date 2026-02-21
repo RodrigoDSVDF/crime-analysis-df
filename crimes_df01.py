@@ -1,0 +1,195 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import numpy as np
+
+# ---------------------------------------------------
+# CONFIGURAÇÃO DA PÁGINA
+# ---------------------------------------------------
+st.set_page_config(page_title="Painel Analítico Criminalidade DF", layout="wide")
+
+# ---------------------------------------------------
+# CARREGAMENTO DOS DADOS
+# ---------------------------------------------------
+@st.cache_data
+def carregar_dados():
+    df = pd.read_csv("base_criminalidade_tratada.csv")
+
+    def classificar(crime):
+        c = str(crime).upper()
+        if any(x in c for x in ['HOMICÍDIO', 'LATROCÍNIO', 'MORTE']):
+            return 'Vida'
+        if 'ROUBO' in c:
+            return 'Roubo'
+        if 'FURTO' in c:
+            return 'Furto'
+        return 'Outros'
+
+    df["Categoria"] = df["Tipo_Crime"].apply(classificar)
+    return df
+
+df = carregar_dados()
+
+# ---------------------------------------------------
+# SIDEBAR — FILTROS COMPACTOS (ESTILO "V")
+# ---------------------------------------------------
+st.sidebar.header("Filtros")
+
+# Anos - usando pills para seleção múltipla visual
+anos_disponiveis = sorted(df["Ano"].unique())
+anos_selecionados = st.sidebar.pills(
+    "📅 Anos",
+    options=anos_disponiveis,
+    selection_mode="multi",
+    default=[max(anos_disponiveis)]
+)
+
+# Tipos de crime - também com pills
+crimes_disponiveis = sorted(df["Tipo_Crime"].unique())
+crimes_selecionados = st.sidebar.pills(
+    "🔫 Tipos de Crime",
+    options=crimes_disponiveis,
+    selection_mode="multi",
+    default=crimes_disponiveis  # ou [] se preferir iniciar vazio
+)
+
+# Regiões - multiselect tradicional, mas compacto
+regioes = st.sidebar.multiselect(
+    "📍 Regiões (opcional)",
+    options=sorted(df["Regiao"].unique()),
+    placeholder="Selecione..."
+)
+
+# Botão para limpar filtros (opcional)
+if st.sidebar.button("🔄 Limpar Filtros"):
+    st.rerun()
+
+# Fallback para versões antigas do Streamlit (sem pills)
+# Se ocorrer erro, descomente as linhas abaixo e comente as linhas com "pills"
+# anos_selecionados = st.sidebar.multiselect("Anos", anos_disponiveis, default=[max(anos_disponiveis)])
+# crimes_selecionados = st.sidebar.multiselect("Tipos de Crime", crimes_disponiveis, default=crimes_disponiveis)
+
+# ---------------------------------------------------
+# FILTRAGEM
+# ---------------------------------------------------
+df_filtro = df[
+    (df["Ano"].isin(anos_selecionados)) &
+    (df["Tipo_Crime"].isin(crimes_selecionados))
+]
+
+if regioes:
+    df_filtro = df_filtro[df_filtro["Regiao"].isin(regioes)]
+
+# ---------------------------------------------------
+# TÍTULO DINÂMICO
+# ---------------------------------------------------
+texto_anos = ", ".join(map(str, sorted(anos_selecionados)))
+st.title(f"Análise Estratégica — {texto_anos}")
+
+# ---------------------------------------------------
+# KPIs
+# ---------------------------------------------------
+total_periodo = df_filtro["Quantidade"].sum()
+regioes_afetadas = df_filtro["Regiao"].nunique()
+
+ano_ref = max(anos_selecionados) if anos_selecionados else None
+if ano_ref and ano_ref - 1 in df["Ano"].unique():
+    ano_anterior = ano_ref - 1
+    total_atual = df[df["Ano"] == ano_ref]["Quantidade"].sum()
+    total_passado = df[df["Ano"] == ano_anterior]["Quantidade"].sum()
+    variacao = ((total_atual - total_passado) / total_passado * 100) if total_passado else 0
+else:
+    variacao = 0
+
+k1, k2, k3 = st.columns(3)
+k1.metric("Total no Período", f"{total_periodo:,.0f}".replace(",", "."))
+k2.metric(f"Variação {ano_ref} vs {ano_anterior if 'ano_anterior' in locals() else 'anterior'}", f"{variacao:.2f}%")
+k3.metric("Regiões Impactadas", regioes_afetadas)
+
+st.divider()
+
+# ---------------------------------------------------
+# RANKING TERRITORIAL
+# ---------------------------------------------------
+ranking = df_filtro.groupby("Regiao")["Quantidade"].sum().reset_index()
+ranking = ranking[ranking["Regiao"].notna() & (ranking["Regiao"].astype(str).str.strip() != "")]
+ranking = ranking.sort_values("Quantidade", ascending=False).head(20)
+
+fig_rank = px.bar(
+    ranking,
+    x="Quantidade",
+    y="Regiao",
+    orientation="h",
+    color="Quantidade",
+    color_continuous_scale="Reds",
+    title="Regiões com Maior Incidência",
+    text="Regiao"
+)
+
+fig_rank.update_layout(
+    yaxis={'categoryorder': 'total descending'},
+    margin=dict(l=200)
+)
+st.plotly_chart(fig_rank, use_container_width=True)
+
+# ---------------------------------------------------
+# TENDÊNCIA TEMPORAL
+# ---------------------------------------------------
+st.subheader("Tendência Temporal")
+
+serie = df[
+    (df["Ano"].isin(anos_selecionados)) &
+    (df["Tipo_Crime"].isin(crimes_selecionados))
+].groupby("Ano")["Quantidade"].sum().reset_index()
+
+serie["Media_Movel"] = serie["Quantidade"].rolling(3, min_periods=1).mean()
+
+fig_trend = px.line(
+    serie,
+    x="Ano",
+    y=["Quantidade", "Media_Movel"],
+    markers=True
+)
+st.plotly_chart(fig_trend, use_container_width=True)
+
+# ---------------------------------------------------
+# HEATMAP
+# ---------------------------------------------------
+st.subheader("Mapa de Calor Região x Ano")
+
+pivot_data = df[df["Tipo_Crime"].isin(crimes_selecionados)]
+pivot = pivot_data.pivot_table(values="Quantidade", index="Regiao", columns="Ano", aggfunc="sum", fill_value=0)
+
+fig_heat = px.imshow(pivot, aspect="auto", color_continuous_scale="Reds", 
+                     labels=dict(x="Ano", y="Região", color="Quantidade"))
+st.plotly_chart(fig_heat, use_container_width=True)
+
+# ---------------------------------------------------
+# PARETO
+# ---------------------------------------------------
+st.subheader("Concentração Criminal")
+
+pareto = df_filtro.groupby("Regiao")["Quantidade"].sum().sort_values(ascending=False)
+pareto_acum = pareto.cumsum() / pareto.sum() * 100
+
+fig_pareto = px.bar(x=pareto.index, y=pareto.values, labels={'x':'Região', 'y':'Quantidade'})
+fig_pareto.add_scatter(x=pareto.index, y=pareto_acum, mode='lines+markers', name='% Acumulado', yaxis='y2')
+
+fig_pareto.update_layout(
+    yaxis2=dict(title='Percentual Acumulado', overlaying='y', side='right', range=[0, 110])
+)
+st.plotly_chart(fig_pareto, use_container_width=True)
+
+# ---------------------------------------------------
+# DISTRIBUIÇÃO POR CATEGORIA
+# ---------------------------------------------------
+st.subheader("Distribuição por Natureza")
+
+fig_cat = px.pie(df_filtro, values="Quantidade", names="Categoria", hole=0.5, title="Participação por Categoria")
+st.plotly_chart(fig_cat, use_container_width=True)
+
+# ---------------------------------------------------
+# TABELA ANALÍTICA
+# ---------------------------------------------------
+with st.expander("Visualizar Dados Detalhados"):
+    st.dataframe(df_filtro.sort_values("Quantidade", ascending=False), use_container_width=True)
