@@ -200,7 +200,7 @@ if regioes:
 # TÍTULO DINÂMICO
 # ---------------------------------------------------
 texto_anos = ", ".join(map(str, sorted(anos_selecionados)))
-st.title(f"📊 Análise de Crimes no DF : dados de ref 2015 a  — {texto_anos}")
+st.title(f"📊 Análise de Crimes no DF : dados de ref 2015   — {texto_anos}")
 
 # ---------------------------------------------------
 # KPIs
