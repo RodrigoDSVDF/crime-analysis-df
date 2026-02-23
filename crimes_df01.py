@@ -650,11 +650,9 @@ with col_heat:
         aspect="auto",
         color_continuous_scale="Reds",
         labels=dict(color="Ocorrências"),
-        text_auto=True,
         height=400
     )
     
-    fig_heat.update_traces(textfont_size=10, texttemplate='%{z:.0f}')
     fig_heat.update_layout(
         margin=dict(l=10, r=10, t=10, b=10),
         paper_bgcolor='rgba(0,0,0,0)',
@@ -677,14 +675,16 @@ with col_pareto:
     
     fig_pareto = make_subplots(specs=[[{"secondary_y": True}]])
     
+    # Barras em azul claro
     fig_pareto.add_trace(
-        go.Bar(x=pareto.index, y=pareto.values, name="Quantidade", marker_color="#dc2626"),
+        go.Bar(x=pareto.index, y=pareto.values, name="Quantidade", marker_color="#4F8BF9"),
         secondary_y=False
     )
     
+    # Linha de percentual em laranja
     fig_pareto.add_trace(
         go.Scatter(x=pareto.index, y=pareto_acum.values, name="% Acumulado", 
-                  mode='lines+markers', line=dict(color="#0f172a", width=3)),
+                  mode='lines+markers', line=dict(color="#FF9F1C", width=3)),
         secondary_y=True
     )
     
