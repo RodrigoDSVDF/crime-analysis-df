@@ -12,7 +12,7 @@ st.set_page_config(
     page_title="Painel Criminalidade DF",
     page_icon="🚔",
     layout="wide",
-    initial_sidebar_state="collapsed"  # Mobile-first: sidebar recolhida
+    initial_sidebar_state="collapsed"
 )
 
 # ---------------------------------------------------
@@ -20,7 +20,6 @@ st.set_page_config(
 # ---------------------------------------------------
 st.markdown("""
 <style>
-    /* Reset e Fontes */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
     
     * {
@@ -35,7 +34,6 @@ st.markdown("""
         -moz-osx-font-smoothing: grayscale;
     }
     
-    /* Cores do tema */
     :root {
         --primary: #0f172a;
         --primary-light: #1e293b;
@@ -50,7 +48,6 @@ st.markdown("""
         --border: #e2e8f0;
     }
     
-    /* Layout responsivo base */
     .main .block-container {
         padding: 1rem;
         max-width: 100%;
@@ -63,7 +60,6 @@ st.markdown("""
         }
     }
     
-    /* Header premium */
     .dashboard-header {
         background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
         color: white;
@@ -104,7 +100,6 @@ st.markdown("""
         font-weight: 400;
     }
     
-    /* Grid de KPIs responsivo */
     .kpi-container {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -176,7 +171,6 @@ st.markdown("""
         color: var(--success);
     }
     
-    /* Cards de gráficos */
     .chart-card {
         background: var(--card);
         border-radius: 16px;
@@ -204,16 +198,6 @@ st.markdown("""
         gap: 0.5rem;
     }
     
-    /* Filtros estilizados */
-    .filter-section {
-        background: var(--card);
-        border-radius: 12px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        border: 1px solid var(--border);
-    }
-    
-    /* Pills modernos */
     div[data-testid="stPills"] {
         display: flex;
         flex-wrap: wrap;
@@ -237,7 +221,6 @@ st.markdown("""
         box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.2);
     }
     
-    /* Botões de ação */
     .stButton button {
         background: var(--primary) !important;
         color: white !important;
@@ -255,7 +238,6 @@ st.markdown("""
         box-shadow: 0 10px 20px -5px rgba(220, 38, 38, 0.3);
     }
     
-    /* Expander moderno */
     .streamlit-expanderHeader {
         background: var(--bg) !important;
         border-radius: 12px !important;
@@ -264,14 +246,6 @@ st.markdown("""
         color: var(--primary) !important;
     }
     
-    /* Tabela estilizada */
-    .stDataFrame {
-        border-radius: 12px !important;
-        overflow: hidden !important;
-        border: 1px solid var(--border) !important;
-    }
-    
-    /* Footer */
     .footer-info {
         background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
         border-radius: 12px;
@@ -285,7 +259,6 @@ st.markdown("""
         color: var(--text-muted);
     }
     
-    /* Mobile optimizations */
     @media (max-width: 640px) {
         .kpi-container {
             grid-template-columns: 1fr;
@@ -299,7 +272,6 @@ st.markdown("""
             padding: 1rem;
         }
         
-        /* Melhorar touch targets */
         div[data-testid="stPills"] button {
             padding: 0.75rem 1rem !important;
             min-height: 44px;
@@ -310,7 +282,6 @@ st.markdown("""
         }
     }
     
-    /* Animações sutis */
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -320,7 +291,6 @@ st.markdown("""
         animation: fadeIn 0.5s ease-out forwards;
     }
     
-    /* Scrollbar estilizada */
     ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -339,7 +309,6 @@ st.markdown("""
         background: var(--text-muted);
     }
     
-    /* Esconder elementos desnecessários no mobile */
     @media (max-width: 768px) {
         [data-testid="stSidebarNav"] { display: none; }
     }
@@ -354,14 +323,12 @@ def carregar_dados():
     try:
         df = pd.read_csv("base_criminalidade_tratada.csv")
         
-        # Validação de colunas essenciais
         colunas_necessarias = ['Tipo_Crime', 'Ano', 'Quantidade', 'Regiao']
         for col in colunas_necessarias:
             if col not in df.columns:
                 st.error(f"Coluna '{col}' não encontrada no dataset")
                 return pd.DataFrame()
         
-        # Classificação otimizada
         def classificar(crime):
             c = str(crime).upper()
             if any(x in c for x in ['HOMICÍDIO', 'LATROCÍNIO', 'MORTE', 'FEMINICÍDIO']):
@@ -375,8 +342,6 @@ def carregar_dados():
             return 'Outros Crimes'
         
         df["Categoria"] = df["Tipo_Crime"].apply(classificar)
-        
-        # Limpeza de dados
         df = df.dropna(subset=['Quantidade', 'Ano'])
         df['Quantidade'] = pd.to_numeric(df['Quantidade'], errors='coerce').fillna(0)
         df['Ano'] = pd.to_numeric(df['Ano'], errors='coerce').astype(int)
@@ -396,12 +361,11 @@ if df.empty:
     st.stop()
 
 # ---------------------------------------------------
-# SIDEBAR COLAPSÁVEL (MOBILE-FRIENDLY)
+# SIDEBAR COLAPSÁVEL
 # ---------------------------------------------------
 with st.sidebar:
     st.markdown("### 🎛️ Painel de Controle")
     
-    # Toggle para mobile
     st.markdown("""
     <style>
     @media (max-width: 768px) {
@@ -412,7 +376,6 @@ with st.sidebar:
     </style>
     """, unsafe_allow_html=True)
     
-    # Anos com seleção inteligente
     anos_disponiveis = sorted(df["Ano"].unique(), reverse=True)
     anos_selecionados = st.pills(
         "📅 Anos de Análise",
@@ -427,7 +390,6 @@ with st.sidebar:
     
     st.divider()
     
-    # Categorias de crime agrupadas (mais eficiente)
     categorias = st.pills(
         "📊 Categorias Criminais",
         options=sorted(df["Categoria"].unique()),
@@ -436,7 +398,6 @@ with st.sidebar:
         help="Filtrar por categoria de crime"
     )
     
-    # Expander para tipos específicos (economia de espaço)
     with st.expander("🔍 Tipos Específicos de Crime"):
         crimes_filtrados = df[df["Categoria"].isin(categorias)]["Tipo_Crime"].unique()
         crimes_selecionados = st.multiselect(
@@ -448,7 +409,6 @@ with st.sidebar:
     
     st.divider()
     
-    # Filtro de região com busca
     regioes_disponiveis = sorted(df["Regiao"].dropna().unique())
     regioes = st.multiselect(
         "📍 Regiões Administrativas",
@@ -457,14 +417,12 @@ with st.sidebar:
         help="Deixe vazio para todas as regiões"
     )
     
-    # Botão de reset
     if st.button("🔄 Resetar Filtros", use_container_width=True):
         st.rerun()
 
 # ---------------------------------------------------
 # FILTRAGEM INTELIGENTE
 # ---------------------------------------------------
-# Filtra por categoria primeiro, depois por tipo específico se selecionado
 mask_categoria = df["Categoria"].isin(categorias) if categorias else pd.Series([True] * len(df))
 df_categorizado = df[mask_categoria]
 
@@ -490,15 +448,12 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------
-# KPIs COM LAYOUT RESPONSIVO
+# KPIs
 # ---------------------------------------------------
 total_periodo = int(df_filtro["Quantidade"].sum())
 regioes_afetadas = df_filtro["Regiao"].nunique()
-media_anual = total_periodo / len(anos_selecionados) if anos_selecionados else 0
 
-# Cálculo de variação ano a ano
 variacao = 0
-tendencia = "neutral"
 if len(anos_selecionados) >= 2:
     anos_ord = sorted(anos_selecionados)
     totais_por_ano = df_filtro.groupby("Ano")["Quantidade"].sum()
@@ -506,14 +461,12 @@ if len(anos_selecionados) >= 2:
         ultimo = totais_por_ano[anos_ord[-1]]
         penultimo = totais_por_ano[anos_ord[-2]]
         variacao = ((ultimo - penultimo) / penultimo * 100) if penultimo else 0
-        tendencia = "positive" if variacao < 0 else "negative"  # Negativo é bom (queda no crime)
 
-# HTML para KPIs
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.markdown(f"""
-    <div class="kpi-card {'positive' if total_periodo == 0 else 'neutral'}">
+    <div class="kpi-card neutral">
         <div class="kpi-label">Total de Ocorrências</div>
         <div class="kpi-value">{total_periodo:,}</div>
         <div class="kpi-delta">No período selecionado</div>
@@ -541,12 +494,11 @@ with col3:
     """, unsafe_allow_html=True)
 
 # ---------------------------------------------------
-# GRID DE GRÁFICOS RESPONSIVO
+# GRÁFICOS PRINCIPAIS
 # ---------------------------------------------------
 col_left, col_right = st.columns([2, 1], gap="large")
 
 with col_left:
-    # Ranking Territorial
     st.markdown("""
     <div class="chart-card">
         <div class="chart-header">
@@ -588,7 +540,6 @@ with col_left:
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_right:
-    # Distribuição por Tipo de Crime (detalhada)
     st.markdown("""
     <div class="chart-card">
         <div class="chart-header">
@@ -603,7 +554,7 @@ with col_right:
         values="Quantidade",
         names="Tipo_Crime",
         hole=0.6,
-        color_discrete_sequence=px.colors.sequential.Reds_r
+        color_discrete_sequence=px.colors.qualitative.Set3
     )
     
     fig_pie.update_traces(
@@ -625,7 +576,7 @@ with col_right:
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------
-# TENDÊNCIA TEMPORAL POR TIPO DE CRIME (LARGURA TOTAL)
+# TENDÊNCIA TEMPORAL
 # ---------------------------------------------------
 st.markdown("""
 <div class="chart-card">
@@ -634,7 +585,6 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Agrupa por Ano e Tipo de Crime (usando df_filtro para respeitar todos os filtros)
 serie_temporal = df_filtro.groupby(["Ano", "Tipo_Crime"])["Quantidade"].sum().reset_index()
 
 fig_line = px.line(
@@ -672,7 +622,7 @@ st.plotly_chart(fig_line, use_container_width=True, config={'displayModeBar': Fa
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------
-# HEATMAP E PARETO (COLUNAS)
+# HEATMAP E PARETO
 # ---------------------------------------------------
 col_heat, col_pareto = st.columns(2)
 
@@ -684,7 +634,6 @@ with col_heat:
         </div>
     """, unsafe_allow_html=True)
     
-    # Top 10 regiões para melhor visualização
     top_regioes = df_filtro.groupby("Regiao")["Quantidade"].sum().nlargest(10).index
     df_heat = df_filtro[df_filtro["Regiao"].isin(top_regioes)]
     
@@ -701,9 +650,11 @@ with col_heat:
         aspect="auto",
         color_continuous_scale="Reds",
         labels=dict(color="Ocorrências"),
+        text_auto=True,
         height=400
     )
     
+    fig_heat.update_traces(textfont_size=10, texttemplate='%{z:.0f}')
     fig_heat.update_layout(
         margin=dict(l=10, r=10, t=10, b=10),
         paper_bgcolor='rgba(0,0,0,0)',
@@ -755,10 +706,9 @@ with col_pareto:
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------
-# TABELA ANALÍTICA COLAPSÁVEL
+# TABELA ANALÍTICA
 # ---------------------------------------------------
 with st.expander("📋 Dados Detalhados (Clique para expandir)"):
-    # Resumo estatístico
     col_stats1, col_stats2, col_stats3 = st.columns(3)
     with col_stats1:
         st.metric("Média por Região", f"{df_filtro.groupby('Regiao')['Quantidade'].sum().mean():.0f}")
@@ -781,7 +731,7 @@ with st.expander("📋 Dados Detalhados (Clique para expandir)"):
     )
 
 # ---------------------------------------------------
-# FOOTER
+# FOOTER COM FONTE DOS DADOS
 # ---------------------------------------------------
 st.markdown("""
 <div class="footer-info">
